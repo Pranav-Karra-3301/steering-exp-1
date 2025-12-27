@@ -1,0 +1,114 @@
+---
+description: Python and Jupyter notebook specific coding standards for ML/AI research
+globs: ["*.py", "*.ipynb"]
+---
+
+# Python & Notebook Standards
+
+## Import Organization
+
+```python
+# Standard library
+import gc
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+# Third-party
+import numpy as np
+import torch
+import torch.nn as nn
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from rich.console import Console
+
+# Local
+from utils import compute_steering_vector
+```
+
+## Tensor Operations
+
+### Always Specify
+
+```python
+# Device placement
+tensor = torch.zeros(size, device="cuda")
+
+# Data types for precision-sensitive operations
+vector = vector.to(dtype=torch.float32)
+
+# Detach from computation graph when storing
+activation = output[0][:, -1, :].detach().cpu()
+```
+
+### Memory Management
+
+```python
+# Wrap inference in no_grad
+with torch.no_grad():
+    output = model.generate(**inputs)
+
+# Clean up after batch processing
+torch.cuda.empty_cache()
+gc.collect()
+
+# Monitor memory usage
+print(f"GPU Memory: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
+```
+
+## Hook Patterns
+
+```python
+class ActivationHook:
+    """Capture activations from a specific layer."""
+
+    def __init__(self, name: str, storage: Dict[str, torch.Tensor]):
+        self.name = name
+        self.storage = storage
+
+    def __call__(
+        self,
+        module: nn.Module,
+        input: Tuple[torch.Tensor],
+        output: Tuple[torch.Tensor]
+    ) -> None:
+        # Always detach and move to CPU to prevent memory accumulation
+        self.storage[self.name] = output[0][:, -1, :].detach().cpu()
+```
+
+## Notebook Cell Structure
+
+Each notebook section should follow:
+
+1. **Markdown Header**: Explain what this section does and why
+2. **Code Cell**: Implementation with inline comments
+3. **Validation Cell**: Verify the operation succeeded
+4. **Output Cell**: Display results using Rich console
+
+## Error Handling
+
+```python
+# Specific exceptions, not bare except
+try:
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+except OSError as e:
+    console.print(f"[red]Failed to load model: {e}[/red]")
+    raise
+except Exception as e:
+    console.print(f"[red]Unexpected error: {type(e).__name__}: {e}[/red]")
+    raise
+```
+
+## Validation Patterns
+
+```python
+# Validate tensor shapes
+assert activations.shape == (batch_size, hidden_size), \
+    f"Expected {(batch_size, hidden_size)}, got {activations.shape}"
+
+# Validate numerical stability
+assert torch.isfinite(vector).all(), "Steering vector contains NaN or Inf"
+
+# Validate magnitude
+magnitude = torch.norm(vector)
+assert magnitude >= 1e-6, f"Steering vector magnitude too small: {magnitude}"
+```

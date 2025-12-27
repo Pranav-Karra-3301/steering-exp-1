@@ -1,0 +1,136 @@
+---
+description: PyTorch tensor operation patterns for ML research - memory safety and numerical stability
+globs: ["*.py", "*.ipynb"]
+---
+
+# Tensor Operation Patterns
+
+## Device Management
+
+```python
+# Always be explicit about device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Create tensors on the right device
+tensor = torch.zeros(shape, device=device)
+
+# Move existing tensors explicitly
+tensor = tensor.to(device)
+
+# Check device before operations
+assert tensor.device == model_tensor.device, "Device mismatch"
+```
+
+## Memory-Safe Patterns
+
+### Inference Without Gradient Accumulation
+
+```python
+# ALWAYS wrap inference in no_grad
+with torch.no_grad():
+    outputs = model(**inputs)
+    logits = outputs.logits
+```
+
+### Activation Capture Without Memory Leak
+
+```python
+def capture_hook(storage: dict, name: str):
+    def hook(module, input, output):
+        # CRITICAL: detach and move to CPU
+        storage[name] = output[0][:, -1, :].detach().cpu()
+    return hook
+```
+
+### Batch Processing With Memory Cleanup
+
+```python
+results = []
+for batch in tqdm(batches):
+    with torch.no_grad():
+        output = model(**batch)
+        results.append(output.cpu())
+
+    # Clean up after each batch
+    del output
+    torch.cuda.empty_cache()
+```
+
+## Numerical Stability
+
+### Safe Normalization
+
+```python
+EPSILON = 1e-6
+
+def safe_normalize(vector: torch.Tensor) -> torch.Tensor:
+    magnitude = torch.norm(vector)
+    if magnitude < EPSILON:
+        logging.warning(f"Near-zero magnitude: {magnitude}")
+        return vector
+    return vector / magnitude
+```
+
+### Safe Division
+
+```python
+# Avoid division by zero
+result = numerator / (denominator + EPSILON)
+
+# Or use where for conditional
+result = torch.where(
+    denominator > EPSILON,
+    numerator / denominator,
+    torch.zeros_like(numerator)
+)
+```
+
+### Checking for NaN/Inf
+
+```python
+def validate_tensor(tensor: torch.Tensor, name: str) -> None:
+    if not torch.isfinite(tensor).all():
+        nan_count = torch.isnan(tensor).sum().item()
+        inf_count = torch.isinf(tensor).sum().item()
+        raise ValueError(
+            f"{name} contains {nan_count} NaN and {inf_count} Inf values"
+        )
+```
+
+## Shape Assertions
+
+```python
+# Document expected shapes in comments
+# activations: [batch_size, seq_len, hidden_size]
+# steering_vector: [hidden_size]
+
+def apply_steering(
+    activations: torch.Tensor,  # [B, S, H]
+    steering_vector: torch.Tensor,  # [H]
+    strength: float = 1.0
+) -> torch.Tensor:
+    assert activations.dim() == 3, f"Expected 3D, got {activations.dim()}D"
+    assert steering_vector.dim() == 1, f"Expected 1D, got {steering_vector.dim()}D"
+    assert activations.shape[-1] == steering_vector.shape[0], "Hidden size mismatch"
+
+    return activations - strength * steering_vector
+```
+
+## Common Pitfalls
+
+```python
+# BAD: In-place modification during forward pass
+hidden_states -= steering_vector  # May break autograd
+
+# GOOD: Create new tensor
+hidden_states = hidden_states - steering_vector
+
+# BAD: Accumulating gradients unknowingly
+for prompt in prompts:
+    output = model(prompt)  # Gradients accumulate!
+
+# GOOD: Explicit no_grad
+with torch.no_grad():
+    for prompt in prompts:
+        output = model(prompt)
+```

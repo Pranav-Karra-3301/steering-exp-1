@@ -1,0 +1,109 @@
+---
+description: Git commit and version control standards for the research project
+globs: [".git/*", "*.md"]
+---
+
+# Git & Version Control Standards
+
+## Commit Message Format
+
+```
+<type>(<scope>): <short description>
+
+[optional body - explain WHY, not WHAT]
+
+[optional footer - references, breaking changes]
+```
+
+## Commit Types
+
+| Type | Use For | Example |
+|------|---------|---------|
+| `feat` | New capabilities | `feat(steering): add per-layer strength tuning` |
+| `fix` | Bug fixes | `fix(memory): resolve activation tensor leak` |
+| `exp` | Experiment changes | `exp(prompts): add injection-resistant test cases` |
+| `docs` | Documentation | `docs: update CLAUDE.md with new workflow` |
+| `refactor` | Code restructure | `refactor(hooks): extract common activation capture` |
+| `perf` | Performance | `perf: batch activation extraction for 3x speedup` |
+| `test` | Test changes | `test: add statistical validation for steering` |
+| `chore` | Maintenance | `chore: update requirements.txt versions` |
+
+## Scope Examples
+
+- `steering` - Steering vector computation or application
+- `activation` - Activation capture and storage
+- `prompts` - Test prompt additions or modifications
+- `viz` - Visualization and plotting
+- `memory` - GPU memory management
+- `stats` - Statistical analysis
+
+## Pre-Commit Checklist
+
+Before every commit, verify:
+
+- [ ] No API keys or tokens in staged files
+- [ ] No model weights or large binaries
+- [ ] All notebook cells have been cleared of sensitive output
+- [ ] requirements.txt updated if dependencies changed
+- [ ] Code runs without errors
+
+## Branch Naming
+
+```
+main                    # Stable, validated experiments
+experiment/<name>       # Active research branches
+fix/<issue>            # Bug fix branches
+docs/<topic>           # Documentation updates
+```
+
+## What NOT to Commit
+
+```gitignore
+# Credentials
+.env
+*.token
+credentials.json
+
+# Model weights
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# Large outputs
+*.h5
+*.hdf5
+outputs/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Cache
+__pycache__/
+.cache/
+```
+
+## Reverting Experiments
+
+If an experiment goes wrong:
+
+```bash
+# See recent commits
+git log --oneline -10
+
+# Revert a specific commit (creates new commit)
+git revert <commit-hash>
+
+# Reset to previous state (destructive - use carefully)
+git reset --hard <commit-hash>
+```
+
+## Tagging Releases
+
+```bash
+# Tag significant experiment milestones
+git tag -a v1.0.0 -m "Initial steering experiment with 85% suppression rate"
+
+# Push tags
+git push origin --tags
+```
