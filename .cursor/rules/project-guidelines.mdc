@@ -1,0 +1,70 @@
+---
+description: Core project guidelines for the Vector Steering Experiment - safety, code style, and research standards
+alwaysApply: true
+---
+
+# Vector Steering Experiment - Project Guidelines
+
+## Project Context
+
+This is a **research experiment** for controlling LLM behavior through activation steering. We target Meta Llama 3 8B to demonstrate token suppression without model retraining.
+
+## Core Principles
+
+1. **Safety First**: All behavior modifications must be transparent, logged, and reversible
+2. **Reproducibility**: Every experiment must yield consistent results with fixed seeds
+3. **Clarity**: Code is documentation - make intent explicit
+4. **Validation**: Statistical significance is mandatory, not optional
+
+## Code Standards
+
+### Always Include
+
+- Type hints on all function signatures
+- Docstrings with Args, Returns, and Raises sections
+- Explicit error handling (never bare `except:`)
+- GPU memory management (`torch.cuda.empty_cache()`, `gc.collect()`)
+- Logging via Rich console for important operations
+
+### Naming Conventions
+
+```python
+# Variables: snake_case
+steering_vector = compute_direction()
+
+# Constants: UPPER_SNAKE_CASE
+STEERING_STRENGTH = 2.0
+TARGET_LAYERS = [16, 17, 18, 19, 20]
+
+# Classes: PascalCase
+class SteeringHook:
+    pass
+
+# Private: leading underscore
+def _internal_helper():
+    pass
+```
+
+### Comment Philosophy
+
+```python
+# Prefer WHY comments over WHAT comments
+# BAD: Normalize the vector
+# GOOD: Normalize to unit length to prevent gradient explosion during steering
+```
+
+## Safety Requirements
+
+- Never commit API keys or HuggingFace tokens
+- Never push model weights to the repository
+- Never remove validation or safety checks
+- Never skip statistical significance testing
+- Always use `torch.no_grad()` for inference
+- Always clean up GPU memory after experiments
+
+## Research Integrity
+
+- Report all results, not just successful runs
+- Include p-values for all statistical claims
+- Document hyperparameter choices and their rationale
+- Maintain reproducibility through fixed random seeds

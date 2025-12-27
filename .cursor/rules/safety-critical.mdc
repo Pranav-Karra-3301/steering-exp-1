@@ -1,0 +1,85 @@
+---
+description: Safety-critical guidelines for AI behavior modification research - MUST READ before making changes
+alwaysApply: true
+---
+
+# Safety-Critical Guidelines
+
+## This Project Modifies AI Behavior
+
+Vector steering directly manipulates model activations to change outputs. This requires exceptional care.
+
+## Safety Hierarchy
+
+```
+1. Transparency  → Can we see and log what's happening?
+2. Reversibility → Can we undo this change instantly?
+3. Bounded Scope → Is the modification limited and predictable?
+4. Validation    → Have we tested edge cases and adversarial inputs?
+5. Documentation → Is this explained clearly for others?
+```
+
+## Mandatory Practices
+
+### Before Any Modification
+
+1. Log the current state (activations, outputs)
+2. Document the intended change and expected outcome
+3. Prepare rollback mechanism (hook handles for removal)
+
+### During Modification
+
+1. Use `torch.no_grad()` to prevent gradient accumulation
+2. Validate tensor shapes and numerical stability
+3. Monitor GPU memory for unexpected growth
+
+### After Modification
+
+1. Verify outputs match expectations
+2. Test against adversarial prompts
+3. Run statistical significance tests
+4. Log results with timestamps
+
+## Prohibited Actions
+
+| Action | Risk | Alternative |
+|--------|------|-------------|
+| Modify model weights | Irreversible | Use steering hooks only |
+| Remove safety checks | Silent failures | Keep all validations |
+| Skip adversarial tests | False confidence | Always test edge cases |
+| Commit credentials | Security breach | Use environment variables |
+| Report without p-values | Unscientific | Always include statistics |
+
+## Adversarial Testing Requirements
+
+Every steering experiment MUST be tested against:
+
+1. **Basic prompts**: Direct questions about the target
+2. **Adversarial prompts**: Complex formulations designed to bypass steering
+3. **Injection prompts**: Jailbreak-style attempts to override
+4. **Clever prompts**: Creative circumvention (spelling, rhyming, synonyms)
+
+## Red Flags - Stop and Review
+
+- Steering vector magnitude < 1e-6 (ineffective)
+- Steering vector contains NaN or Inf (numerical instability)
+- Output quality severely degraded (over-steering)
+- Memory growing linearly with prompts (leak)
+- Inconsistent results across runs (reproducibility failure)
+
+## Emergency Procedures
+
+```python
+# Immediately remove all steering hooks
+for handle in steering_handles:
+    handle.remove()
+steering_handles.clear()
+
+# Clear all cached state
+torch.cuda.empty_cache()
+gc.collect()
+
+# Verify model is in original state
+output = model.generate(test_prompt)
+assert "orange" in output  # Steering removed, word appears again
+```
